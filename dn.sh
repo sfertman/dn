@@ -12,45 +12,68 @@ get_token() {
     | jq -r '.token'
 }
 
-get_alpine_versions() {
+get_tags() {
+  local repo=$1
+}
+
+tag_to_version() {
+  local tag=$1
+  grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' \
+    | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' <<<$tag ## or something
+}
+
+get_versions() {
   local image=$1
   local token=$2
+  # curl\
+  #   --silent \
+  #   --header "Autorization: Bearer $token" \
+  #   "https://registry-1.docker.io/$image/tags/list"
+  #   | jq -r '.tags[]'
+  #   | grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' \
+  #   | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' \
+  #   | sort --version-sort
   curl\
     --silent \
     --header "Autorization: Bearer $token" \
     "https://registry-1.docker.io/$image/tags/list"
     | jq -r '.tags[]'
-    | grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' \
-    | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' \
+    | tag_to_version \
     | sort --version-sort
+
 }
+
+
+
 
 
 # straightforward example of command-line parameter handling:
 while [ $# -gt 0 ]; do    # Until you run out of parameters . . .
   case "$1" in
-    -d|--debug)
-              # "-d" or "--debug" parameter?
-              DEBUG=1
-              ;;
-    -c|--conf)
-              CONFFILE="$2"
-              shift
-              if [ ! -f $CONFFILE ]; then
-                echo "Error: Supplied file doesn't exist!"
-                exit $E_CONFFILE     # File not found error.
-              fi
-              ;;
+    -g|--global)
+      DN_IS_GLOBAL=1
+      ;;
+
+    --help)
+      DN_IS_HELP=1
+      ;;
   esac
   shift       # Check next set of parameters.
 done
 
+get_cmd
+## place holder for getting the command from cli input
 
-
-print_usage() {
-  cat help/dn.txt
-
+help() {
+  local cmd=$1
+  cat help/$1.txt
 }
+
+
+if [ $DN_IS_HELP ]; then
+  help $DN_CMD
+  ## find a way to exit the script here without throwing errors (hint: exit is not the wayh because it will close the terminal)
+fi
 
 
 ## this is how I want my cli to look like

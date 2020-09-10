@@ -1,15 +1,21 @@
-Usage:  dn [OPTIONS] COMMAND
+Usage:
+
+  dn [OPTIONS] VERSION
+    Switch to specified version (install if missing.)
+
+  dn COMMAND ...
+    Manage versions using available commands below.
 
 Options:
 
   -g, --global  Affect global version when switching
 
 Commands:
-  add     Install a version
-  ls      List installed versions
-  rm      Delete a version
-  search  Search available versions
-  show    Display information about current version
-  switch  Switch to installed version
+  add      Install one or more versions
+  ls       List installed versions
+  rm       Delete a version
+  search   Search available versions
+  show     Display information about current version
+  switch   Switch to installed version
 
 Run 'dn COMMAND --help' for more information on a command.
