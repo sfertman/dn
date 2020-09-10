@@ -1,1 +1,3 @@
-TODO
+Usage:  dn show
+
+Display information about currently active node version.

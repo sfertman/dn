@@ -1,1 +1,7 @@
-TODO
+Usage:  dn switch [OPTIONS] VERSION
+
+Switch to specified installed VERSION. Will fail if VERSION is not installed.
+
+Options:
+
+  -g, --global  Affect global version when switching
