@@ -78,6 +78,12 @@ fi
 
 ## this is how I want my cli to look like
 
+# # install itself on your system
+# dn install
+
+# # uninstall itself from your system
+# dn uninstall
+
 # # to search all available resources online and mark the ones already installed (a-la brew)
 # dn search <some regexp>
 
