@@ -1,3 +1,0 @@
-Usage:  dn search VERSION
-
-Search available versions. Will display any matching versions starting with major. For example: 'dn search 12' will display all versions matching '12.x.y'; 'dn search 11.4' will match '11.4.x'.

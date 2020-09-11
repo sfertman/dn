@@ -1,3 +1,0 @@
-Usage:  dn rm V1 V2 ...
-
-Uninstall one or more node versions from your system.

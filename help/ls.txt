@@ -1,3 +1,0 @@
-Usage:  dn ls
-
-List installed versions.

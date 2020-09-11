@@ -1,3 +1,0 @@
-Usage:  dn add VERSIONS...
-
-Install one or more node versions.
