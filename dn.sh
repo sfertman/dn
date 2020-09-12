@@ -28,8 +28,8 @@ Usage:
 
 Options:
 
-  -g, --global   Affect global version when switching
-  -v, --version  Show installer dn version
+  -g, --global   Affect global node version when switching
+  -v, --version  Show installed dn version
 
 Commands:
   add      Install one or more versions
@@ -38,14 +38,14 @@ Commands:
   search   Search available versions
   show     Display information about current version
   switch   Switch to installed version
-  version  Show the dn version information
+  version  Show dn version information
 
 Run 'dn COMMAND --help' for more information on a command.";
 }
 
 dn_add_help() {
   echoerr "
-Usage:  dn add VERSIONS...
+Usage:  dn add VERSION [VERSION...]
 
 Install one or more node versions.";
 }
@@ -59,7 +59,7 @@ List installed versions.";
 
 dn_rm_help() {
   echoerr "
-Usage:  dn rm V1 V2 ...
+Usage:  dn rm VERSION [VERSION...]
 
 Uninstall one or more node versions from your system.";
 }
@@ -109,11 +109,14 @@ validate_version() {
 
 is_installed_version() {
   # echoes input if version installed and nothing otherwize
-  ERRNIMPL;
+  local version=$1
+  if [ ! -z $(docker images node:$version-alpine -q) ] ; then
+    echo $version
+  fi
 }
 
 dn_add() {
-  if [[ $# -le 0 ]] ; then
+  if [ $# -le 0 ] ; then
     dn_add_help
   else
     case "$1" in
@@ -129,6 +132,108 @@ dn_add() {
     esac
   fi
 }
+
+dn_rm() {
+  if [ $# -le 0 ] ; then
+    dn_rm_help
+  else
+    case "$1" in
+      -h|--help)
+        dn_rm_help
+        ;;
+      *)
+        for v in $@ ; do
+          docker rmi node:$v-alpine
+        done
+        ;;
+    esac
+  fi
+}
+
+dn_switch() {
+  if [ $# -le 0 ] ; then
+    dn_switch_help;
+  else
+    local is_global;
+    local is_help;
+
+    while [[ $# -gt 0 && $1 == -* ]]; do
+      case "$1" in
+        -g|--global)
+          is_global=1
+          ;;
+        -h|--help)
+          is_help=1
+          ;;
+        *)
+          echoerr "Unknown option $1";
+          return 1
+          ;;
+      esac
+      shift
+    done
+
+    args=$@;
+    if [ ! -z $is_help ]; then
+      dn_switch_help;
+    elif [ ! -z $is_global ]; then
+      echo "switching global w/ args: ${args[*]}";
+    else
+      echo "switching local w/ args: ${args[*]}";
+    fi
+  fi
+}
+
+dn_ls() {
+  if [ $# -le 0 ] ; then
+    dn_ls_help
+  else
+    case "$1" in
+      -h|--help)
+        dn_ls_help
+        ;;
+      *)
+        docker images "node:*-alpine" --format={{.Tag}} | tag_to_version | sort --version-sort
+        ;;
+    esac
+  fi
+}
+
+
+get_dir() {
+  dirname $PWD
+}
+
+
+get_active_version() {
+  # returns the active node version. If no local version found, returns the global configured
+  # while [ ! -f .dnode_version ]
+  echo "spam";
+
+  # make something that can write: (maybe dn info or something)
+  #   12.0.1 (LOCAL: this_dir)
+  #   12.13.14 (GLOBAL)
+}
+
+
+dn_show() {
+  if [ $# -le 0 ] ; then
+    dn_show_help
+  else
+    case "$1" in
+      -h|--help)
+        dn_show_help
+        ;;
+      *)
+        local active_version=$(get_active_version)
+        docker images "node:$active_version-alpine"
+        # ^ can possibly make it fancier
+        ;;
+    esac
+  fi
+}
+
+
 
 get_auth_token() {
   # returns a docker hub annonymous auth token to pull from $repo
@@ -155,14 +260,8 @@ get_tags() {
 tag_to_version() {
   # Converts tags to versions (keeps alpine only)
   # Example: tag_to_version 12-alpine 12.1.3-alpine 14.0.4-alpine
-
-  # local tag=$1
-  # grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' \
-  #   | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' <<<$tag ## or something
-
-  for t in $@ ; do
-    grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | -Eo '^[0-9]+(\.[0-9]+){0,2}' <<< $t
-    # grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' <<< "$t"
+  for t in $@ ; do ## <- mebbe should do it with while read line...
+    grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< $t | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
   done
 }
 
@@ -183,17 +282,6 @@ get_versions_old() {
     | sort --version-sort
 }
 
-
-get_dir() {
-  dirname $PWD
-}
-
-
-get_active_version() {
-  # returns the active node version. If no local version found, returns the global configured
-  # while [ ! -f .dnode_version ]
-  echo "spam";
-}
 
 ARGS=(${@})
 REST_ARGS=${ARGS[*]:1}
