@@ -102,10 +102,9 @@ uninstall() {
   ERRNIMPL;
 }
 
-is_version() {
+validate_version() {
   # echoes input if semver version x.y.z and nothing otherwize
-  echo 1
-  ERRNIMPL;
+  grep -E '^[0-9]+(\.[0-9]+){0,2}$' <<< $1
 }
 
 is_installed_version() {
@@ -162,7 +161,8 @@ tag_to_version() {
   #   | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' <<<$tag ## or something
 
   for t in $@ ; do
-    grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' <<< "$t" ## or something
+    grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | -Eo '^[0-9]+(\.[0-9]+){0,2}' <<< $t
+    # grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' <<< "$t"
   done
 }
 
