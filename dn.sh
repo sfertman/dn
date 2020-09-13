@@ -104,7 +104,7 @@ uninstall() {
 
 validate_version() {
   # echoes input if semver version x.y.z and nothing otherwize
-  grep -E '^[0-9]+(\.[0-9]+){0,2}$' <<< $1
+  grep -Eo '^[0-9]+(\.[0-9]+){0,2}$' <<<${1}
 }
 
 is_installed_version() {
@@ -177,28 +177,28 @@ dn_switch() {
     if [ ! -z $is_help ]; then
       dn_switch_help;
     elif [ ! -z $is_global ]; then
-      echo "switching global w/ args: ${args[*]}";
+      echo "switching global w/ args: ${args[*]}"; #// TODO
     else
-      echo "switching local w/ args: ${args[*]}";
+      echo "switching local w/ args: ${args[*]}"; #// TODO
     fi
   fi
 }
 
-dn_ls() {
-  if [ $# -le 0 ] ; then
-    dn_ls_help
-  else
-    case "$1" in
-      -h|--help)
-        dn_ls_help
-        ;;
-      *)
-        docker images "node:*-alpine" --format={{.Tag}} | tag_to_version | sort --version-sort
-        ;;
-    esac
-  fi
+dn_add_and_switch() {
+  dn_add $@
+  dn_switch $@
 }
 
+dn_ls() {
+  case "$1" in
+    -h|--help)
+      dn_ls_help
+      ;;
+    *)
+      docker images "node:*-alpine" --format={{.Tag}} | tag_to_version | sort --version-sort
+      ;;
+  esac
+}
 
 get_dir() {
   dirname $PWD
@@ -258,14 +258,21 @@ get_tags() {
 }
 
 tag_to_version() {
-  # Converts tags to versions (keeps alpine only)
+  # Converts tags to versions. Keeps alpine only. Accepts pipe.
   # Example: tag_to_version 12-alpine 12.1.3-alpine 14.0.4-alpine
-  for t in $@ ; do ## <- mebbe should do it with while read line...
-    grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< $t | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
-  done
+  #          docker images "node:*-alpine" --format={{.Tag}} | tag_to_version
+  if [ $# -le 0 ] ; then
+    while read t ; do
+      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< $t | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    done
+  else
+    for t in $@ ; do ## <- mebbe should do it with while read line...
+      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< $t | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    done
+  fi
 }
 
-get_node_versions() {
+get_node_versions() { # this will be useful for search
   get_tags library/node | tag_to_version | sort --version-sort
 }
 
@@ -285,7 +292,7 @@ get_versions_old() {
 
 ARGS=(${@})
 REST_ARGS=${ARGS[*]:1}
-
+## TODO: make this into a "main" fn
 case "$1" in
   -h|--help)
     dn_help
@@ -293,8 +300,9 @@ case "$1" in
   -v|--version)
     echo $DN_INSTALLED_VERSION
     ;;
-  -semver_regex) ## figure out how to do this
-    add_and_switch ${ARGS[@]}
+  ## TODO: add is_global here too
+  $(validate_version ${1}) )
+    dn_add_and_switch ${ARGS[@]}
     ;;
   add)
     dn_add ${REST_ARGS[*]}
@@ -309,7 +317,7 @@ case "$1" in
     dn_search ${REST_ARGS[@]}
     ;;
   show)
-    dn_switch ${REST_ARGS[@]}
+    dn_show ${REST_ARGS[@]}
     ;;
   switch)
     dn_switch ${REST_ARGS[@]}
