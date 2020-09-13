@@ -21,7 +21,7 @@ dn_help() {
 Usage:
 
   dn [OPTIONS] VERSION
-    Switch to specified version (install if missing.)
+    Switch to specified version x.y.z (install if missing.)
 
   dn COMMAND ...
     Manage versions using available commands below.
@@ -301,7 +301,7 @@ case "$1" in
     echo $DN_INSTALLED_VERSION
     ;;
   ## TODO: add is_global here too
-  $(validate_version ${1}) )
+  +([0-9])?(\.+([0-9]))?(\.+([0-9])))
     dn_add_and_switch ${ARGS[@]}
     ;;
   add)
