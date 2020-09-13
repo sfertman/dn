@@ -261,13 +261,13 @@ tag_to_version() {
   # Converts tags to versions. Keeps alpine only. Accepts pipe.
   # Example: tag_to_version 12-alpine 12.1.3-alpine 14.0.4-alpine
   #          docker images "node:*-alpine" --format={{.Tag}} | tag_to_version
-  if [ $# -le 0 ] ; then
-    while read t ; do
-      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< $t | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
+  if [ "$#" -gt 0 ]; then
+    for t in $@ ; do
+      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< "${t}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
     done
   else
-    for t in $@ ; do ## <- mebbe should do it with while read line...
-      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< $t | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    while read t ; do
+      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< "${t}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
     done
   fi
 }
