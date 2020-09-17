@@ -4,8 +4,9 @@
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_SCRIPT_VERSION=0.1.0
-DN_INSTALLED_VERSION=$(cat ~/.dn/.version)
+DN_INSTALL_DIR="$(eval echo "~/.dn")"
+DN_SCRIPT_VERSION="0.1.0"
+DN_INSTALLED_VERSION="$(< "${DN_INSTALL_DIR}"/.version)"
 
 dn_version() {
   echoerr "
