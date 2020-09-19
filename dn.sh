@@ -293,8 +293,8 @@ get_tags() {
   local token=$(get_auth_token $repo)
   curl\
     --silent \
-    --header "Autorization: Bearer $token" \
-    "https://registry-1.docker.io/$repo/tags/list" \
+    --header "Authorization: Bearer $token" \
+    "https://registry-1.docker.io/v2/$repo/tags/list" \
     | jq -r '.tags[]'
 }
 
