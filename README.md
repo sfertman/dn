@@ -1,2 +1,4 @@
 # dn
-**D**ocker powered **n**ode version manager
+**D**ocker powered **N**ode.js version manager
+
+Invoke `./dn.sh -h` to get started.
