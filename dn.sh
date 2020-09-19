@@ -143,17 +143,6 @@ dn_rm() {
   fi
 }
 
-get_active_version_file() {
-  # Echoes currently active .dnode_version file path; local or global; echoes nothing if neither file exists!
-  # because I need to know which file to write a version to
-
-  ## Actually this is not needed for the above stated reason (see implamentation below.)
-
-  ## I am not entirely sure that it is needed at all
-
-  echo 'spam!!!'
-}
-
 dn_switch_local() {
   local local_version="$1";
   if [ ! -z $(validate_version "${local_version}") ]; then
@@ -361,7 +350,7 @@ case "$1" in
   rm) #+
     dn_rm ${REST_ARGS[@]}
     ;;
-  search) # TODO: the only one left!!
+  search) #+
     dn_search ${REST_ARGS[@]}
     ;;
   show) #+
@@ -370,7 +359,7 @@ case "$1" in
   switch) #+
     dn_switch ${REST_ARGS[@]}
     ;;
-  use-global)
+  use-global) # TODO: create dn_use_global_help
     dn_use_global
     ;;
   version) #+
@@ -380,36 +369,6 @@ case "$1" in
     dn_help
     ;;
 esac
-
-
-# # straightforward example of command-line parameter handling:
-# while [ $# -gt 0 ]; do    # Until you run out of parameters . . .
-#   case "$1" in
-#     -g|--global)
-#       DN_IS_GLOBAL=1
-#       ;;
-
-#     --help)
-#       DN_IS_HELP=1
-#       ;;
-#   esac
-#   shift       # Check next set of parameters.
-# done
-
-# get_cmd
-# ## place holder for getting the command from cli input
-
-# help() {
-#   local cmd=$1
-#   cat help/$1.txt
-# }
-
-
-# if [ $DN_IS_HELP ]; then
-#   help $DN_CMD
-#   ## find a way to exit the script here without throwing errors (hint: exit is not the wayh because it will close the terminal)
-# fi
-
 
 ## this is how I want my cli to look like
 
