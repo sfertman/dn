@@ -8,12 +8,6 @@ DN_INSTALL_DIR="$(eval echo "~/.dn")"
 DN_SCRIPT_VERSION="0.1.0"
 DN_INSTALLED_VERSION="$(< "${DN_INSTALL_DIR}"/.version)"
 
-dn_version() {
-  echoerr "
-Script version:     $DN_SCRIPT_VERSION
-Installed version:  $DN_INSTALLED_VERSION"
-}
-
 echoerr() { echo "$@" 1>&2; }
 ERRNIMPL() { echoerr "ERROR: Not implemented"; }
 
@@ -105,14 +99,14 @@ uninstall() {
 
 validate_version() {
   # echoes input if semver version x.y.z and nothing otherwize
-  grep -Eo '^[0-9]+(\.[0-9]+){0,2}$' <<<${1}
+  grep -Eo '^[0-9]+(\.[0-9]+){0,2}$' <<<"${1}"
 }
 
 is_installed_version() {
   # echoes input if version installed and nothing otherwize
-  local version=$1
-  if [ ! -z $(docker images node:$version-alpine -q) ] ; then
-    echo $version
+  local version="${1}"
+  if [ ! -z $(docker images node:${version}-alpine -q) ] ; then
+    echo "${version}"
   fi
 }
 
@@ -151,6 +145,31 @@ dn_rm() {
   fi
 }
 
+get_active_version_file() {
+  # Echoes currently active .dnode_version file path; local or global; echoes nothing if neither file exists!
+  # because I need to know which file to write a version to
+
+  ## Actually this is not needed for the above stated reason (see implamentation below.)
+
+  ## I am not entirely sure that it is needed at all
+
+  echo 'spam!!!'
+}
+
+dn_switch_local() {
+  local local_version="$1";
+  if [ ! -z $(validate_version "${local_version}") ]; then
+    printf "${local_version}" > .dnode_version;
+  fi
+}
+
+dn_switch_global() {
+  local global_version="$1";
+  if [ ! -z $(validate_version "${global_version}") ]; then
+    printf "${global_version}" > "${DN_INSTALL_DIR}.dnode_version";
+  fi
+}
+
 dn_switch() {
   if [ $# -le 0 ] ; then
     dn_switch_help;
@@ -178,11 +197,21 @@ dn_switch() {
     if [ ! -z $is_help ]; then
       dn_switch_help;
     elif [ ! -z $is_global ]; then
-      echo "switching global w/ args: ${args[*]}"; #// TODO
+      dn_switch_global ${args[*]}
     else
-      echo "switching local w/ args: ${args[*]}"; #// TODO
+      dn_switch_local ${args[*]}
     fi
   fi
+}
+
+dn_use_global() {
+  rm -f .dnode_version
+}
+
+dn_version() {
+  echoerr "
+Script version:     $DN_SCRIPT_VERSION
+Installed version:  $DN_INSTALLED_VERSION"
 }
 
 dn_add_and_switch() {
@@ -201,40 +230,51 @@ dn_ls() {
   esac
 }
 
-get_dir() {
-  dirname $PWD
-}
-
-
-get_active_version() {
+get_active_version_local() {
   # returns the active node version. If no local version found, returns the global configured
-  # while [ ! -f .dnode_version ]
-  echo "spam";
 
-  # make something that can write: (maybe dn info or something)
-  #   12.0.1 (LOCAL: this_dir)
-  #   12.13.14 (GLOBAL)
-}
+  local this_dir="$1"
 
+  if [ -z "$this_dir" ]; then
+    this_dir="$PWD"
+  fi
 
-dn_show() {
-  if [ $# -le 0 ] ; then
-    dn_show_help
-  else
-    case "$1" in
-      -h|--help)
-        dn_show_help
-        ;;
-      *)
-        local active_version=$(get_active_version)
-        docker images "node:$active_version-alpine"
-        # ^ can possibly make it fancier
-        ;;
-    esac
+  if [ -f "$this_dir/.dnode_version" ]; then
+    echo "$(<$this_dir/.dnode_version)"
+  elif [ "/" != "$this_dir" ]; then
+    get_active_version_local $(dirname $this_dir)
   fi
 }
 
+# make something that can write: (maybe dn info or something)
+#   12.0.1 (LOCAL: this_dir)
+#   12.13.14 (GLOBAL)
 
+get_active_version_global() {
+  echo "$(< "${DN_INSTALL_DIR}"/.dnode_version)"
+}
+
+get_active_version() {
+  local local_version="$(get_active_version_local)";
+  if [ ! -z "${local_version}" ]; then
+    echo "${local_version}"
+  else
+    get_active_version_global;
+  fi
+}
+
+dn_show() {
+  case "$1" in
+    -h|--help)
+      dn_show_help
+      ;;
+    *)
+      local active_version=$(get_active_version)
+      docker images "node:$active_version-alpine"
+      # ^ can possibly make it fancier?
+      ;;
+  esac
+}
 
 get_auth_token() {
   # returns a docker hub annonymous auth token to pull from $repo
@@ -259,7 +299,7 @@ get_tags() {
 }
 
 tag_to_version() {
-  # Converts tags to versions. Keeps alpine only. Accepts pipe.
+  # Converts x[.y[.z]]-alpine tags to versions. Accepts pipe.
   # Example: tag_to_version 12-alpine 12.1.3-alpine 14.0.4-alpine
   #          docker images "node:*-alpine" --format={{.Tag}} | tag_to_version
   if [ "$#" -gt 0 ]; then
@@ -273,7 +313,8 @@ tag_to_version() {
   fi
 }
 
-get_node_versions() { # this will be useful for search
+get_node_versions() {
+  # Retrieves all available alpine versions from docker-hub
   get_tags library/node | tag_to_version | sort --version-sort
 }
 
@@ -293,40 +334,44 @@ get_versions_old() {
 
 ARGS=(${@})
 REST_ARGS=${ARGS[*]:1}
-## TODO: make this into a "main" fn
+## TODO: encapsulate this into a "main" fn
 case "$1" in
   -h|--help)
     dn_help
     ;;
   -v|--version)
-    echo $DN_INSTALLED_VERSION
+    echo "$DN_INSTALLED_VERSION"
     ;;
-  ## TODO: add is_global here too
+  # TODO: add is_global here too
   +([0-9])?(\.+([0-9]))?(\.+([0-9])))
+  ## TODO: ^^^ this does not work on mac -- need to come up with a more partable solution
     dn_add_and_switch ${ARGS[@]}
     ;;
-  add)
+  add) #+
     dn_add ${REST_ARGS[*]}
     ;;
-  ls)
+  ls) #+
     dn_ls ${REST_ARGS[@]}
     ;;
-  rm)
+  rm) #+
     dn_rm ${REST_ARGS[@]}
     ;;
-  search)
+  search) # TODO: the only one left!!
     dn_search ${REST_ARGS[@]}
     ;;
-  show)
+  show) #+
     dn_show ${REST_ARGS[@]}
     ;;
-  switch)
+  switch) #+
     dn_switch ${REST_ARGS[@]}
     ;;
-  version)
+  use-global)
+    dn_use_global
+    ;;
+  version) #+
     dn_version
     ;;
-  *)
+  *) #+
     dn_help
     ;;
 esac
