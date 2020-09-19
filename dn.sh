@@ -61,11 +61,9 @@ Uninstall one or more node versions from your system.";
 
 dn_search_help() {
   echoerr "
-Usage:  dn search VERSION
+Usage:  dn search VERSION_PREFIX
 
-Search available versions. Will display any matching versions starting with major.
-For example: 'dn search 12' will display all versions matching '12.x.y'
-             'dn search 11.4' will display all versions matching '11.4.x'.";
+Search available versions. Will display any matching versions starting with VERSION_PREFIX.";
 }
 
 dn_show_help() {
@@ -304,12 +302,12 @@ tag_to_version() {
   #          docker images "node:*-alpine" --format={{.Tag}} | tag_to_version
   if [ "$#" -gt 0 ]; then
     for t in $@ ; do
-      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< "${t}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
-    done
+      echo "$t"
+    done | grep --color=never -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
   else
     while read t ; do
-      grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' <<< "${t}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}'
-    done
+      echo "$t"
+    done | grep --color=never -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
   fi
 }
 
@@ -318,19 +316,26 @@ get_node_versions() {
   get_tags library/node | tag_to_version | sort --version-sort
 }
 
-get_versions_old() {
-  local image=$1
-  local token=$2
-  curl\
-    --silent \
-    --header "Autorization: Bearer $token" \
-    "https://registry-1.docker.io/$image/tags/list" \
-    | jq -r '.tags[]' \
-    | grep -E '^[0-9]+\.?[0-9]*\.?[0-9]*-alpine$' \
-    | grep -Eo '^[0-9]+\.?[0-9]*\.?[0-9]*[^-]*' \
-    | sort --version-sort
-}
 
+dn_search() {
+  if [ $# -le 0 ]; then
+    dn_search_help;
+  else
+    case "${1}" in
+      -h|--help)
+        dn_search_help
+        ;;
+      *)
+        local prefix="${1}";
+        if [ -z $(validate_version ${prefix}) ]; then
+          dn_search_help;
+        else
+          get_node_versions | grep --color=never -Eo "^${prefix}.*"
+        fi
+        ;;
+    esac
+  fi
+}
 
 ARGS=(${@})
 REST_ARGS=${ARGS[*]:1}
