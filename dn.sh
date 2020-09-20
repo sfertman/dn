@@ -143,6 +143,10 @@ dn_rm() {
   fi
 }
 
+dn_run() {
+  ERRNIMPL;
+}
+
 dn_switch_local() {
   local local_version="$1";
   if [ ! -z $(validate_version "${local_version}") ]; then
@@ -349,6 +353,9 @@ case "$1" in
     ;;
   rm) #+
     dn_rm ${REST_ARGS[@]}
+    ;;
+  run) # run node [npm|npx|node-gyp] -- not sure yet
+    dn_run
     ;;
   search) #+
     dn_search ${REST_ARGS[@]}
