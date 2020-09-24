@@ -39,52 +39,12 @@ Commands:
 Run 'dn COMMAND --help' for more information on a command.";
 }
 
-dn_ls_help() {
-  echoerr "
-Usage:  dn ls
-
-List installed versions.";
-}
-
-dn_rm_help() {
-  echoerr "
-Usage:  dn rm VERSION [VERSION...]
-
-Uninstall one or more node versions from your system.";
-}
-
-dn_search_help() {
-  echoerr "
-Usage:  dn search VERSION_PREFIX
-
-Search available versions. Will display any matching versions starting with VERSION_PREFIX.";
-}
-
-dn_show_help() {
-  echoerr "
-Usage:  dn show
-
-Display information about currently active node version.";
-}
-
-dn_switch_help() {
-  echoerr "
-Usage:  dn switch [OPTIONS] VERSION
-
-Switch to specified installed VERSION. Will fail if VERSION is not installed.
-
-Options:
-
-  -g, --global  Affect global version when switching";
-}
-
-
-install() {
+dn_install() {
   # Installs dn on your system
   ERRNIMPL;
 }
 
-uninstall() {
+dn_uninstall() {
   # Uninstalls dn from your system
   ERRNIMPL;
 }
@@ -92,6 +52,8 @@ uninstall() {
 validate_version() {
   # echoes input if semver version x.y.z and nothing otherwize
   echo "${1}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}$'
+  ### TODO: make this work like an idiomatic validation fn.
+  ### Should return no result if valid and "INVALID_VERSION" otherwise
 }
 
 is_installed_version() {
@@ -125,12 +87,17 @@ Install one or more node versions.";}
 }
 
 dn_rm() {
+  _help() { echoerr "
+Usage:  dn rm VERSION [VERSION...]
+
+Uninstall one or more node versions from your system.";}
+
   if [ $# -le 0 ] ; then
-    dn_rm_help
+    _help
   else
     case "$1" in
       -h|--help)
-        dn_rm_help
+        _help
         ;;
       *)
         for v ; do
@@ -192,8 +159,17 @@ dn_switch_global() {
 }
 
 dn_switch() {
+  _help() { echoerr "
+Usage:  dn switch [OPTIONS] VERSION
+
+Switch to specified installed VERSION. Will fail if VERSION is not installed.
+
+Options:
+
+  -g, --global  Affect global version when switching";}
+
   if [ $# -le 0 ] ; then
-    dn_switch_help;
+    _help;
   else
     local is_global;
     local is_help;
@@ -216,7 +192,7 @@ dn_switch() {
 
     args=$@;
     if [ ! -z $is_help ]; then
-      dn_switch_help;
+      _help;
     elif [ ! -z $is_global ]; then
       dn_switch_global ${args[*]}
     else
@@ -236,14 +212,20 @@ Installed version:  $DN_INSTALLED_VERSION"
 }
 
 dn_add_and_switch() {
+  ## FIXME: do not install if exists; add always tries to pull
   dn_add $@
   dn_switch $@
 }
 
 dn_ls() {
+  _help() {echoerr "
+Usage:  dn ls
+
+List installed versions.";}
+
   case "$1" in
     -h|--help)
-      dn_ls_help
+      _help
       ;;
     *)
     local tag_versions=( $(docker images "node:*-alpine" --format={{.Tag}} \
@@ -299,9 +281,14 @@ get_active_version() {
 }
 
 dn_show() {
+  _help() { echoerr "
+Usage:  dn show
+
+Display information about currently active node version.";}
+
   case "$1" in
     -h|--help)
-      dn_show_help
+      _help
       ;;
     *)
       local active_version=$(get_active_version)
@@ -367,17 +354,22 @@ get_node_versions() {
 
 
 dn_search() {
+  _help() { echoerr "
+Usage:  dn search VERSION_PREFIX
+
+Search available versions. Will display any matching versions starting with VERSION_PREFIX.";}
+
   if [ $# -le 0 ]; then
-    dn_search_help;
+    _help;
   else
     case "${1}" in
       -h|--help)
-        dn_search_help
+        _help
         ;;
       *)
         local prefix="${1}";
         if [ -z $(validate_version ${prefix}) ]; then
-          dn_search_help;
+          _help;
         else
           get_node_versions | grep --color=never -Eo "^${prefix}.*"
         fi
@@ -403,13 +395,16 @@ case "$1" in
   add) #+
     dn_add ${REST_ARGS[*]}
     ;;
+  install) # TODO
+    dn_install ## args?
+    ;;
   ls) #+
     dn_ls ${REST_ARGS[*]}
     ;;
   rm) #+
     dn_rm ${REST_ARGS[*]}
     ;;
-  run) # run node [npm|npx|node-gyp] -- not sure yet
+  run) # TODO: almost done
     dn_run ${REST_ARGS[*]}
     ;;
   search) #+
@@ -420,6 +415,9 @@ case "$1" in
     ;;
   switch) #+
     dn_switch ${REST_ARGS[*]}
+    ;;
+  uninstall) # TODO
+    dn_uninstall
     ;;
   use-global) # TODO: create dn_use_global_help
     dn_use_global
