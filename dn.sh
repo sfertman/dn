@@ -145,14 +145,44 @@ dn_rm() {
 }
 
 dn_run() {
-  local node_version=$(get_active_version)
-  local CMD=(docker run -it --rm);
-  CMD=(${CMD[*]} -it);
-  CMD=(${CMD[*]} -w "/.dnode${PWD}");
-  CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
-  ## TODO: mount external node_modules
-  CMD=(${CMD[*]} "node:${node_version}-alpine" $@);
-  ${CMD[*]}
+  _help() { echoerr "
+Usage: dn run COMMAND [ARG...]
+
+Commands:
+  node  Run node [ARG...]
+  npm   Run npm [ARG...]
+  npx   Run npx [ARG...]
+  yarn  Run yarn [ARG...]";}
+
+  if [[ "$#" -le 0 || "$1" = '-h' || "$1" = '--help' ]]; then
+    _help;
+  else
+    local node_version=$(get_active_version)
+    local CMD=(docker run -it --rm);
+    CMD=(${CMD[*]} -it);
+    CMD=(${CMD[*]} -w "/.dnode${PWD}");
+    CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
+    ## TODO: mount external node_modules
+    case "$1" in
+      node)
+        CMD=(${CMD[*]} "node:${node_version}-alpine" $@);
+        ;;
+      npm)
+        CMD=(${CMD[*]} "node:${node_version}-alpine" npm $@);
+        ;;
+      npx)
+        CMD=(${CMD[*]} "node:${node_version}-alpine" npx $@);
+        ;;
+      yarn)
+        CMD=(${CMD[*]} "node:${node_version}-alpine" yarn $@);
+        ;;
+      *)
+        echoerr "Unknown command $1";
+        return 1
+        ;;
+    esac
+    ${CMD[*]}
+  fi
 }
 
 dn_switch_local() {
