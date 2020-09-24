@@ -145,7 +145,14 @@ dn_rm() {
 }
 
 dn_run() {
-  ERRNIMPL;
+  local node_version=$(get_active_version)
+  local CMD=(docker run -it --rm);
+  CMD=(${CMD[*]} -it);
+  CMD=(${CMD[*]} -w "/.dnode${PWD}");
+  CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
+  ## TODO: mount external node_modules
+  CMD=(${CMD[*]} "node:${node_version}-alpine" $@);
+  ${CMD[*]}
 }
 
 dn_switch_local() {
@@ -381,7 +388,7 @@ case "$1" in
     dn_rm ${REST_ARGS[*]}
     ;;
   run) # run node [npm|npx|node-gyp] -- not sure yet
-    dn_run
+    dn_run ${REST_ARGS[*]}
     ;;
   search) #+
     dn_search ${REST_ARGS[*]}
