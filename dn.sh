@@ -39,13 +39,6 @@ Commands:
 Run 'dn COMMAND --help' for more information on a command.";
 }
 
-dn_add_help() {
-  echoerr "
-Usage:  dn add VERSION [VERSION...]
-
-Install one or more node versions.";
-}
-
 dn_ls_help() {
   echoerr "
 Usage:  dn ls
@@ -110,17 +103,21 @@ is_installed_version() {
 }
 
 dn_add() {
-  if [ $# -le 0 ] ; then
-    dn_add_help
+  _help() { echoerr "
+Usage:  dn add VERSION [VERSION...]
+
+Install one or more node versions.";}
+
+  if [ "$#" -le 0 ] ; then
+    _help
   else
     case "$1" in
       -h|--help)
-        dn_add_help
+        _help
         ;;
       *)
-        for v in $@ ; do
-        # TODO(performance): check if image exists locally before tryoing to pull
-          docker pull library/node:$v-alpine;
+        for v ; do
+          docker pull "library/node:${v}-alpine";
         done
         ;;
     esac
