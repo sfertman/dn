@@ -151,6 +151,12 @@ Commands:
   npx   Run npx [ARG...]
   yarn  Run yarn [ARG...]";}
 
+  validate_command() {
+    if [[ ! $1 =~ ^(node|npm|npx|yarn)$ ]]; then
+      echo 'INVALID_COMMAND';
+    fi
+  }
+
   if [[ "$#" -le 0 || "$1" = '-h' || "$1" = '--help' ]]; then
     _help;
   else
@@ -160,24 +166,13 @@ Commands:
     CMD=(${CMD[*]} -w "/.dnode${PWD}");
     CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
     ## TODO: mount external node_modules
-    case "$1" in
-      node)
-        CMD=(${CMD[*]} "node:${node_version}-alpine" $@);
-        ;;
-      npm)
-        CMD=(${CMD[*]} "node:${node_version}-alpine" npm $@);
-        ;;
-      npx)
-        CMD=(${CMD[*]} "node:${node_version}-alpine" npx $@);
-        ;;
-      yarn)
-        CMD=(${CMD[*]} "node:${node_version}-alpine" yarn $@);
-        ;;
-      *)
-        echoerr "Unknown command $1";
-        return 1
-        ;;
-    esac
+    CMD=(${CMD[*]} "node:${node_version}-alpine");
+    if [ -z $(validate_command $1) ]; then
+      CMD=(${CMD[*]} $@);
+    else
+      echoerr "Unknown command $1";
+      return 1
+    fi
     ${CMD[*]}
   fi
 }
