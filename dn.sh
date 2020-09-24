@@ -1,10 +1,11 @@
-#!/bin/sh
-
+#!/bin/bash
+shopt -s extglob
+set -e
 
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_INSTALL_DIR="$(eval echo "~/.dn")"
+DN_INSTALL_DIR="$(eval echo '~/.dn')"
 DN_SCRIPT_VERSION="0.1.0"
 DN_INSTALLED_VERSION="$(< "${DN_INSTALL_DIR}"/.version)"
 
@@ -97,7 +98,7 @@ uninstall() {
 
 validate_version() {
   # echoes input if semver version x.y.z and nothing otherwize
-  grep -Eo '^[0-9]+(\.[0-9]+){0,2}$' <<<"${1}"
+  echo "${1}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}$'
 }
 
 is_installed_version() {
@@ -135,8 +136,8 @@ dn_rm() {
         dn_rm_help
         ;;
       *)
-        for v in $@ ; do
-          docker rmi node:$v-alpine
+        for v ; do
+          docker rmi "node:${v}-alpine"
         done
         ;;
     esac
@@ -216,7 +217,21 @@ dn_ls() {
       dn_ls_help
       ;;
     *)
-      docker images "node:*-alpine" --format={{.Tag}} | tag_to_version | sort --version-sort
+    local tag_versions=( $(docker images "node:*-alpine" --format={{.Tag}} \
+                            | tag_to_version \
+                            | sort --version-sort) )
+    local img_tags=( $(version_to_tag ${tag_versions[*]}) )
+    local full_versions=( $(docker image inspect ${img_tags[*]} \
+                             | jq -r '.[].Config.Env[]' \
+                             | grep NODE_VERSION \
+                             | grep -Eo --color=never '[0-9]+(\.[0-9]+){0,2}') )
+      for i in ${!tag_versions[*]} ; do
+        if [ -z $(echo ${tag_versions[$i]} | grep -Eo '^[0-9]+(\.[0-9]+){2}$' ) ]; then
+          echo -e "${tag_versions[$i]}\t(${full_versions[$i]})"
+        else
+          echo "${tag_versions[$i]}"
+        fi
+      done
       ;;
   esac
 }
@@ -296,11 +311,23 @@ tag_to_version() {
   if [ "$#" -gt 0 ]; then
     for t in $@ ; do
       echo "$t"
-    done | grep --color=never -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    done | grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
   else
     while read t ; do
       echo "$t"
-    done | grep --color=never -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    done | grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
+  fi
+}
+
+version_to_tag() {
+  if [ "$#" -gt 0 ]; then
+    for v; do
+      echo "node:$v-alpine"
+    done
+  else
+    while read v ; do
+      echo "node:$v-alpine"
+    done
   fi
 }
 
@@ -330,7 +357,7 @@ dn_search() {
   fi
 }
 
-ARGS=(${@})
+ARGS=("$@")
 REST_ARGS=${ARGS[*]:1}
 ## TODO: encapsulate this into a "main" fn
 case "$1" in
@@ -342,29 +369,28 @@ case "$1" in
     ;;
   # TODO: add is_global here too
   +([0-9])?(\.+([0-9]))?(\.+([0-9])))
-  ## TODO: ^^^ this does not work on mac -- need to come up with a more partable solution
-    dn_add_and_switch ${ARGS[@]}
+    dn_add_and_switch ${ARGS[*]}
     ;;
   add) #+
     dn_add ${REST_ARGS[*]}
     ;;
   ls) #+
-    dn_ls ${REST_ARGS[@]}
+    dn_ls ${REST_ARGS[*]}
     ;;
   rm) #+
-    dn_rm ${REST_ARGS[@]}
+    dn_rm ${REST_ARGS[*]}
     ;;
   run) # run node [npm|npx|node-gyp] -- not sure yet
     dn_run
     ;;
   search) #+
-    dn_search ${REST_ARGS[@]}
+    dn_search ${REST_ARGS[*]}
     ;;
   show) #+
-    dn_show ${REST_ARGS[@]}
+    dn_show ${REST_ARGS[*]}
     ;;
   switch) #+
-    dn_switch ${REST_ARGS[@]}
+    dn_switch ${REST_ARGS[*]}
     ;;
   use-global) # TODO: create dn_use_global_help
     dn_use_global
