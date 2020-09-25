@@ -1,19 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 shopt -s extglob
 set -e
 
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_INSTALL_DIR="$(eval echo '~/.dn')"
+PREFIX=/usr/local
 DN_SCRIPT_VERSION="0.1.0"
-DN_INSTALLED_VERSION="$(< "${DN_INSTALL_DIR}"/.version)"
+DN_INSTALL_DIR=${PREFIX}/lib/dn
+
+get_dn_version() {
+  if [ -f "${DN_INSTALL_DIR}/.version" ]; then
+    echo "$(< "${DN_INSTALL_DIR}/.version")"
+  else
+    echo "N/A"
+  fi
+}
 
 echoerr() { echo "$@" 1>&2; }
 ERRNIMPL() { echoerr "ERROR: Not implemented"; }
 
 dn_help() {
   echoerr "
+DN:  (D)ocker Powered (N)ode Version Manager 🐳 + ⬢ (https://github.com/sfertman/dn)
+
 Usage:
 
   dn [OPTIONS] VERSION
@@ -28,20 +38,30 @@ Options:
   -v, --version  Show installed dn version
 
 Commands:
-  add      Install one or more versions
-  ls       List installed versions
-  rm       Delete a version
-  search   Search available versions
-  show     Display information about current version
-  switch   Switch to installed version
-  version  Show dn version information
+  add        Install one or more node version
+  info       Display dn system info
+  install    Install dn on your system
+  ls         List installed versions
+  rm         Delete a version
+  search     Search available versions
+  show       Display o about current version
+  switch     Switch to installed version
+  uninstall  Uninstall dn from your system
 
 Run 'dn COMMAND --help' for more information on a command.";
 }
 
 dn_install() {
-  # Installs dn on your system
-  ERRNIMPL;
+  echo "Installing DN..."
+  mkdir -p ${DN_INSTALL_DIR}
+  cp -afp $(realpath $0) ${DN_INSTALL_DIR}
+  printf "${DN_SCRIPT_VERSION}" > ${DN_INSTALL_DIR}/.version;
+  chmod +x ${PREFIX}/lib/dn/dn.sh
+  ln -sf ${PREFIX}/lib/dn/dn.sh ${PREFIX}/bin/dn
+  echo "DN has been successfully installed in your system"
+  dn_info
+  echo ""
+  echo "Run 'dn --help' to get started."
 }
 
 dn_uninstall() {
@@ -119,7 +139,7 @@ Commands:
   yarn  Run yarn [ARG...]";}
 
   validate_command() {
-    if [[ ! $1 =~ ^(node|npm|npx|yarn)$ ]]; then
+    if [[ ! $1 =~ ^(node|npm|npx|yarn|yarnpkg|bash|sh)$ ]]; then
       echo 'INVALID_COMMAND';
     fi
   }
@@ -132,6 +152,7 @@ Commands:
     CMD=(${CMD[*]} -it);
     CMD=(${CMD[*]} -w "/.dnode${PWD}");
     CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
+    # CMD=(${CMD[*]} -v "${DN_INSTALL_DIR}/111.1.43/node_modules/:/usr/local/lib/node_modules/");
     ## TODO: mount external node_modules
     CMD=(${CMD[*]} "node:${node_version}-alpine");
     if [ -z $(validate_command $1) ]; then
@@ -205,10 +226,28 @@ dn_use_global() {
   rm -f .dnode_version
 }
 
-dn_version() {
+dn_info() {
+  local node_version
+  local node_version_type='global'
+
+  local node_version_local=$(get_active_version_local)
+  if [ ! -z "$node_version_local" ]; then
+    node_version=$node_version_local;
+    node_version_type='local'
+  else
+    node_version=$(get_active_version_global)
+    if [ -z "$node_version" ]; then
+      node_version='N/A';
+    fi
+  fi
+
   echoerr "
+DN:  (D)ocker Powered (N)ode Version Manager 🐳 + ⬢
+
 Script version:     $DN_SCRIPT_VERSION
-Installed version:  $DN_INSTALLED_VERSION"
+Installed version:  $(get_dn_version)
+Node version:       $node_version ($node_version_type)
+Source:             https://github.com/sfertman/dn"
 }
 
 dn_add_and_switch() {
@@ -218,7 +257,7 @@ dn_add_and_switch() {
 }
 
 dn_ls() {
-  _help() {echoerr "
+  _help() { echoerr "
 Usage:  dn ls
 
 List installed versions.";}
@@ -257,18 +296,16 @@ get_active_version_local() {
   fi
 
   if [ -f "$this_dir/.dnode_version" ]; then
-    echo "$(<$this_dir/.dnode_version)"
+    echo "$(< $this_dir/.dnode_version)"
   elif [ "/" != "$this_dir" ]; then
     get_active_version_local $(dirname $this_dir)
   fi
 }
 
-# make something that can write: (maybe dn info or something)
-#   12.0.1 (LOCAL: this_dir)
-#   12.13.14 (GLOBAL)
-
 get_active_version_global() {
-  echo "$(< "${DN_INSTALL_DIR}"/.dnode_version)"
+  if [ -f "${DN_INSTALL_DIR}/.dnode_version" ]; then
+    echo "$(< "${DN_INSTALL_DIR}/.dnode_version")"
+  fi
 }
 
 get_active_version() {
@@ -293,7 +330,13 @@ Display information about currently active node version.";}
     *)
       local active_version=$(get_active_version)
       docker images "node:$active_version-alpine"
-      # ^ can possibly make it fancier?
+      # TODO: ^ can possibly make it fancier?
+      ## add indicator to whether it's a global or local version
+
+      # what do I want here?
+      # - .Config.Env[].NODE_VERSION
+      # - get npm version somehow without docker run?
+      # - .Config.ENV[].YARN_VERSION
       ;;
   esac
 }
@@ -386,7 +429,7 @@ case "$1" in
     dn_help
     ;;
   -v|--version)
-    echo "$DN_INSTALLED_VERSION"
+    echo "$(get_dn_version)"
     ;;
   # TODO: add is_global here too
   +([0-9])?(\.+([0-9]))?(\.+([0-9])))
@@ -394,6 +437,9 @@ case "$1" in
     ;;
   add) #+
     dn_add ${REST_ARGS[*]}
+    ;;
+  info) #+
+    dn_info
     ;;
   install) # TODO
     dn_install ## args?
@@ -421,9 +467,6 @@ case "$1" in
     ;;
   use-global) # TODO: create dn_use_global_help
     dn_use_global
-    ;;
-  version) #+
-    dn_version
     ;;
   *) #+
     dn_help
