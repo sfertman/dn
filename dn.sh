@@ -5,9 +5,12 @@ set -e
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
+DN_SCRIPT_VERSION='0.1.0'
+DN_INSTALL_NODE_VERSION=14
 PREFIX=/usr/local
-DN_SCRIPT_VERSION="0.1.0"
 DN_INSTALL_DIR=${PREFIX}/lib/dn
+DN_BIN_DIR=${PREFIX}/bin
+DN_REPO_URL='https://github.com/sfertman/dn'
 
 get_dn_version() {
   if [ -f "${DN_INSTALL_DIR}/.version" ]; then
@@ -22,7 +25,7 @@ ERRNIMPL() { echoerr "ERROR: Not implemented"; }
 
 dn_help() {
   echoerr "
-DN:  (D)ocker Powered (N)ode Version Manager 🐳 + ⬢ (https://github.com/sfertman/dn)
+DN:  Docker Powered Node Version Manager 🐳 + ⬢
 
 Usage:
 
@@ -34,39 +37,81 @@ Usage:
 
 Options:
 
-  -g, --global   Affect global node version when switching
   -v, --version  Show installed dn version
 
 Commands:
-  add        Install one or more node version
-  info       Display dn system info
-  install    Install dn on your system
-  ls         List installed versions
-  rm         Delete a version
-  search     Search available versions
-  show       Display o about current version
-  switch     Switch to installed version
-  uninstall  Uninstall dn from your system
+  add         Install one or more node version
+  forget      Forget directory local setting
+  info        Display dn system info
+  install     Install dn on your system
+  ls          List installed versions
+  rm          Delete a version
+  search      Search available versions
+  show        Display information about the current Node version
+  switch      Switch to installed version
+  uninstall   Uninstall dn from your system
+  use-global  Use global setting in directory
 
 Run 'dn COMMAND --help' for more information on a command.";
 }
 
 dn_install() {
-  echo "Installing DN..."
-  mkdir -p ${DN_INSTALL_DIR}
-  cp -afp $(realpath $0) ${DN_INSTALL_DIR}
+  echo "Installing DN...";
+  echo "";
+  mkdir -p ${DN_INSTALL_DIR};
+  local script_path;
+  case "${SHELL}" in
+    */zsh)
+      script_path="${0}"
+      ;;
+    */bash|*/sh)
+      script_path="$(realpath "${0}")"
+      ;;
+    *)
+      echoerr "Shell ${SHELL} is not supported! Installation FAILED 😱"
+      echoerr
+      echoerr "To add support for ${SHELL} asap, please open an issue at:"
+      echoerr
+      echoerr "  ${DN_REPO_URL}/issues"
+      echoerr
+
+      return 1
+      ;;
+  esac
+
+  cp -afp "${script_path}" "${DN_INSTALL_DIR}";
   printf "${DN_SCRIPT_VERSION}" > ${DN_INSTALL_DIR}/.version;
-  chmod +x ${PREFIX}/lib/dn/dn.sh
-  ln -sf ${PREFIX}/lib/dn/dn.sh ${PREFIX}/bin/dn
-  echo "DN has been successfully installed in your system"
+  chmod +x ${DN_INSTALL_DIR}/dn.sh;
+  ln -sf ${DN_INSTALL_DIR}/dn.sh ${DN_BIN_DIR}/dn;
+  dn_add $DN_INSTALL_NODE_VERSION
+  dn_switch -g $DN_INSTALL_NODE_VERSION
+  echo
+  echo "DN has been successfully INSTALLED."
   dn_info
-  echo ""
-  echo "Run 'dn --help' to get started."
+  echo
+  echo "Run 'dn --help' to get started.";
 }
 
 dn_uninstall() {
-  # Uninstalls dn from your system
-  ERRNIMPL;
+  read -p "This will UNINSTALL DN from your system; proceed (y/N)? " -n 1 -r
+  echo
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "whew!"
+    return 1;
+  fi
+
+  echo "Uninstalling DN...";
+  echo "";
+  rm -rf ${DN_INSTALL_DIR};
+  rm -f ${DN_BIN_DIR}/dn
+  echo "DN has been successfully UNINSTALLED 🤔"
+  echo
+  echo "Sorry to see you go. If this is due to a bug or lack"
+  echo "of features please let me know by opening an issue at:"
+  echo
+  echo "  ${DN_REPO_URL}"
+  echo
 }
 
 validate_version() {
@@ -175,7 +220,7 @@ dn_switch_local() {
 dn_switch_global() {
   local global_version="$1";
   if [ ! -z $(validate_version "${global_version}") ]; then
-    printf "${global_version}" > "${DN_INSTALL_DIR}.dnode_version";
+    printf "${global_version}" > "${DN_INSTALL_DIR}/.dnode_version";
   fi
 }
 
@@ -222,8 +267,38 @@ Options:
   fi
 }
 
+dn_forget() {
+  _help() { echoerr "
+Usage:  dn forget
+
+Forget local Node version setting and use the next in line version.";}
+
+  if [ $# -gt 0 ]; then
+    _help;
+  else
+    rm -f .dnode_version
+  fi
+}
+
 dn_use_global() {
-  rm -f .dnode_version
+  _help() { echoerr "
+Usage:  dn use-global
+
+Use the current global Node version setting.";}
+
+  ## TODO: Possibly make global dynamically updatabe?
+  ## meaning, if global changes at some point,
+  ## .dnode_version will always point to that setting
+  ## This requires a change to get_active_version_local
+  ## to consider a pointer to global.
+
+  if [ $# -gt 0 ]; then
+    _help;
+  else
+    local global_version=$(get_active_version_global)
+    dn_switch_local $global_version
+    echo "Using global Node version:  ${global_version}"
+  fi
 }
 
 dn_info() {
@@ -242,16 +317,15 @@ dn_info() {
   fi
 
   echoerr "
-DN:  (D)ocker Powered (N)ode Version Manager 🐳 + ⬢
+DN:  Docker Powered Node Version Manager 🐳 + ⬢
 
 Script version:     $DN_SCRIPT_VERSION
 Installed version:  $(get_dn_version)
 Node version:       $node_version ($node_version_type)
-Source:             https://github.com/sfertman/dn"
+Source:             ${DN_REPO_URL}"
 }
 
 dn_add_and_switch() {
-  ## FIXME: do not install if exists; add always tries to pull
   dn_add $@
   dn_switch $@
 }
@@ -395,12 +469,14 @@ get_node_versions() {
   get_tags library/node | tag_to_version | sort --version-sort
 }
 
-
 dn_search() {
   _help() { echoerr "
-Usage:  dn search VERSION_PREFIX
+Search available versions.
 
-Search available versions. Will display any matching versions starting with VERSION_PREFIX.";}
+Usage:
+
+  dn search VERSION_PREFIX    Search versions by prefix
+  dn search -a|--all          Get full list of versions";}
 
   if [ $# -le 0 ]; then
     _help;
@@ -408,6 +484,9 @@ Search available versions. Will display any matching versions starting with VERS
     case "${1}" in
       -h|--help)
         _help
+        ;;
+      -a|--all)
+        get_node_versions
         ;;
       *)
         local prefix="${1}";
@@ -431,18 +510,20 @@ case "$1" in
   -v|--version)
     echo "$(get_dn_version)"
     ;;
-  # TODO: add is_global here too
   +([0-9])?(\.+([0-9]))?(\.+([0-9])))
     dn_add_and_switch ${ARGS[*]}
     ;;
   add) #+
     dn_add ${REST_ARGS[*]}
     ;;
+  forget) #+
+    dn_forget
+    ;;
   info) #+
     dn_info
     ;;
-  install) # TODO
-    dn_install ## args?
+  install) #+
+    dn_install
     ;;
   ls) #+
     dn_ls ${REST_ARGS[*]}
@@ -462,48 +543,13 @@ case "$1" in
   switch) #+
     dn_switch ${REST_ARGS[*]}
     ;;
-  uninstall) # TODO
+  uninstall) #+
     dn_uninstall
     ;;
-  use-global) # TODO: create dn_use_global_help
+  use-global) #+
     dn_use_global
     ;;
   *) #+
     dn_help
     ;;
 esac
-
-## this is how I want my cli to look like
-
-# # install itself on your system
-# dn install
-
-# # uninstall itself from your system
-# dn uninstall
-
-# # to search all available resources online and mark the ones already installed (a-la brew)
-# dn search <some regexp>
-
-# # to get the *latest* version of node 11.x.y if doesn't exist on machine or switch to whatever node 11.x.y already exists on machine
-# dn 11
-
-# # to get/switch a specific version
-# dn 11.4.5
-
-# # to add a node version explicitly
-# dn add x.y.z
-
-#  # to remove a node version
-# dn rm 11.4.5
-
-#  # to switch to a node version explicitly
-# dn switch x.y.z
-
-# # to list all installed node versoins
-# dn ls
-
-# # to display details about the version I currently have active
-# dn show
-
-# # to modify global environment
-# jm [-g|--global] ...
