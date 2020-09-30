@@ -115,10 +115,9 @@ dn_uninstall() {
 }
 
 validate_version() {
-  # echoes input if semver version x.y.z and nothing otherwize
-  echo "${1}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}$'
-  ### TODO: make this work like an idiomatic validation fn.
-  ### Should return no result if valid and "INVALID_VERSION" otherwise
+  if [ -z "$(echo "${1}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}$')" ]; then
+    echo 'INVALID_VERSION';
+  fi
 }
 
 is_installed_version() {
@@ -192,34 +191,36 @@ Commands:
   if [[ "$#" -le 0 || "$1" = '-h' || "$1" = '--help' ]]; then
     _help;
   else
-    local node_version=$(get_active_version)
+    local node_full_version=$(get_active_version);
+    local node_major_version=$(echo "${node_full_version}" | grep --color=never -Eo ^[0-9]+)
+    local docker_vol="dnode_modules_${node_major_version}";
+    docker volume create "${docker_vol}" > /dev/null;
     local CMD=(docker run -it --rm);
     CMD=(${CMD[*]} -it);
     CMD=(${CMD[*]} -w "/.dnode${PWD}");
     CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
-    # CMD=(${CMD[*]} -v "${DN_INSTALL_DIR}/111.1.43/node_modules/:/usr/local/lib/node_modules/");
-    ## TODO: mount external node_modules
-    CMD=(${CMD[*]} "node:${node_version}-alpine");
+    CMD=(${CMD[*]} -v "${docker_vol}:/usr/local/lib/node_modules");
+    CMD=(${CMD[*]} "node:${node_full_version}-alpine");
     if [ -z $(validate_command $1) ]; then
       CMD=(${CMD[*]} $@);
     else
       echoerr "Unknown command $1";
-      return 1
+      return 1;
     fi
-    ${CMD[*]}
+    ${CMD[*]};
   fi
 }
 
 dn_switch_local() {
   local local_version="$1";
-  if [ ! -z $(validate_version "${local_version}") ]; then
+  if [ -z $(validate_version "${local_version}") ]; then
     printf "${local_version}" > .dnode_version;
   fi
 }
 
 dn_switch_global() {
   local global_version="$1";
-  if [ ! -z $(validate_version "${global_version}") ]; then
+  if [ -z $(validate_version "${global_version}") ]; then
     printf "${global_version}" > "${DN_INSTALL_DIR}/.dnode_version";
   fi
 }
@@ -260,9 +261,11 @@ Options:
     if [ ! -z $is_help ]; then
       _help;
     elif [ ! -z $is_global ]; then
-      dn_switch_global ${args[*]}
+      dn_switch_global ${args[*]};
+      dn_show;
     else
-      dn_switch_local ${args[*]}
+      dn_switch_local ${args[*]};
+      dn_show;
     fi
   fi
 }
@@ -297,7 +300,7 @@ Use the current global Node version setting.";}
   else
     local global_version=$(get_active_version_global)
     dn_switch_local $global_version
-    echo "Using global Node version:  ${global_version}"
+    dn_show;
   fi
 }
 
@@ -486,14 +489,14 @@ Usage:
         _help
         ;;
       -a|--all)
-        get_node_versions
+        get_node_versions | grep --color=never -Eo '^[0-9]+\.[0-9]+\.[0-9]+'
         ;;
       *)
         local prefix="${1}";
-        if [ -z $(validate_version ${prefix}) ]; then
+        if [ ! -z $(validate_version ${prefix}) ]; then
           _help;
         else
-          get_node_versions | grep --color=never -Eo "^${prefix}.*"
+          get_node_versions | grep --color=never -Eo "^${prefix}.*" | grep --color=never -Eo '^[0-9]+\.[0-9]+\.[0-9]+'
         fi
         ;;
     esac
@@ -531,7 +534,7 @@ case "$1" in
   rm) #+
     dn_rm ${REST_ARGS[*]}
     ;;
-  run) # TODO: almost done
+  run) #+
     dn_run ${REST_ARGS[*]}
     ;;
   search) #+
