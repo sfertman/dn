@@ -298,8 +298,7 @@ Use the current global Node version setting.";}
   if [ $# -gt 0 ]; then
     _help;
   else
-    local global_version=$(get_active_version_global)
-    dn_switch_local $global_version
+    printf '@global' > .dnode_version;
     dn_show;
   fi
 }
@@ -368,14 +367,19 @@ get_active_version_local() {
 
   local this_dir="$1"
 
-  if [ -z "$this_dir" ]; then
+  if [ -z "${this_dir}" ]; then
     this_dir="$PWD"
   fi
 
-  if [ -f "$this_dir/.dnode_version" ]; then
-    echo "$(< $this_dir/.dnode_version)"
-  elif [ "/" != "$this_dir" ]; then
-    get_active_version_local $(dirname $this_dir)
+  if [ -f "${this_dir}/.dnode_version" ]; then
+    local active_version_local="$(< ${this_dir}/.dnode_version)";
+    if [ "${active_version_local}" = '@global' ]; then
+      get_active_version_global;
+    else
+      echo "${active_version_local}";
+    fi
+  elif [ "/" != "${this_dir}" ]; then
+    get_active_version_local "$(dirname "${this_dir}")"
   fi
 }
 
