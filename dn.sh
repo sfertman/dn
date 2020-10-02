@@ -343,19 +343,16 @@ List installed versions.";}
       _help
       ;;
     *)
-    local tag_versions=( $(docker images "node:*-alpine" --format={{.Tag}} \
-                            | tag_to_version \
-                            | sort --version-sort) )
-    local img_tags=( $(version_to_tag ${tag_versions[*]}) )
-    local full_versions=( $(docker image inspect ${img_tags[*]} \
-                             | jq -r '.[].Config.Env[]' \
-                             | grep NODE_VERSION \
-                             | grep -Eo --color=never '[0-9]+(\.[0-9]+){0,2}') )
-      for i in ${!tag_versions[*]} ; do
-        if [ -z $(echo ${tag_versions[$i]} | grep -Eo '^[0-9]+(\.[0-9]+){2}$' ) ]; then
-          echo -e "${tag_versions[$i]}\t(${full_versions[$i]})"
+      local node_version=( $(docker image list "node:*-alpine" --format={{.Tag}} \
+                              | tag_to_version \
+                              | sort --version-sort) )
+      local active_version=$(get_active_version);
+      local prefix='  ';
+      for i in ${!node_version[*]} ; do
+        if [ "${node_version[$i]}" != "${active_version}" ]; then
+          echo "  ${node_version[$i]}"
         else
-          echo "${tag_versions[$i]}"
+          echo "* ${node_version[$i]}"
         fi
       done
       ;;
