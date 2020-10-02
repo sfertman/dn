@@ -211,18 +211,8 @@ Commands:
   fi
 }
 
-dn_switch_local() {
-  local local_version="$1";
-  if [ -z $(validate_version "${local_version}") ]; then
-    printf "${local_version}" > .dnode_version;
-  fi
-}
-
-dn_switch_global() {
-  local global_version="$1";
-  if [ -z $(validate_version "${global_version}") ]; then
-    printf "${global_version}" > "${DN_INSTALL_DIR}/.dnode_version";
-  fi
+validate_img_tag() {
+  docker image inspect "${1}" >/dev/null 2>&1 || echo 'INVALID_IMAGE';
 }
 
 dn_switch() {
@@ -257,16 +247,30 @@ Options:
       shift
     done
 
-    args=$@;
     if [ ! -z $is_help ]; then
       _help;
-    elif [ ! -z $is_global ]; then
-      dn_switch_global ${args[*]};
-      dn_show;
-    else
-      dn_switch_local ${args[*]};
-      dn_show;
+      return 0;
     fi
+
+    local node_version="${1}"
+    if [ ! -z $(validate_version "${node_version}") ]; then
+      echoerr "Invalid version: ${node_version}";
+      return 1;
+    fi
+
+    if [ ! -z $(validate_img_tag "node:${node_version}-alpine") ]; then
+      echoerr "Version ${node_version} is not installed; to install, run:   dn add ${node_version}";
+      return 1;
+    fi
+
+    if [ ! -z $is_global ]; then
+      printf "${node_version}" > "${DN_INSTALL_DIR}/.dnode_version";
+    else
+      printf "${node_version}" > .dnode_version;
+    fi
+
+    dn_show;
+
   fi
 }
 
