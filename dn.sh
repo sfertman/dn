@@ -406,15 +406,12 @@ Display information about currently active node version.";}
       _help
       ;;
     *)
-      local active_version=$(get_active_version)
-      docker images "node:$active_version-alpine"
-      # TODO: ^ can possibly make it fancier?
-      ## add indicator to whether it's a global or local version
-
-      # what do I want here?
-      # - .Config.Env[].NODE_VERSION
-      # - get npm version somehow without docker run?
-      # - .Config.ENV[].YARN_VERSION
+      local active_version=$(get_active_version);
+      local full_version=$(docker image inspect node:${active_version}-alpine \
+                            | jq -r '.[].Config.Env[]' \
+                            | grep NODE_VERSION \
+                            | grep -Eo --color=never '[0-9]+(\.[0-9]+){0,2}');
+      echo "$active_version ($full_version)"
       ;;
   esac
 }
