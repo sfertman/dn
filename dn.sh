@@ -484,8 +484,8 @@ Search available versions.
 
 Usage:
 
-  dn search VERSION_PREFIX    Search versions by prefix
-  dn search -a|--all          Get full list of versions";}
+  dn search PREFIX     Search versions by version prefix
+  dn search -a|--all   Get full list of versions";}
 
   if [ $# -le 0 ]; then
     _help;
@@ -499,10 +499,14 @@ Usage:
         ;;
       *)
         local prefix="${1}";
-        if [ ! -z $(validate_version ${prefix}) ]; then
+        if [ ! -z $(validate_version "${prefix}") ]; then
+          echoerr 'Prefix must be a valid version number of the form x[.y[.z]]';
           _help;
+          return 1;
         else
-          get_node_versions | grep --color=never -Eo "^${prefix}.*" | grep --color=never -Eo '^[0-9]+\.[0-9]+\.[0-9]+'
+          get_node_versions \
+            | grep --color=never -Eo "^${prefix}.*" \
+            | grep --color=never -Eo '^[0-9]+\.[0-9]+\.[0-9]+';
         fi
         ;;
     esac
