@@ -421,13 +421,13 @@ tag_to_version() {
   # Example: tag_to_version 12-alpine 12.1.3-alpine 14.0.4-alpine
   #          docker images "node:*-alpine" --format={{.Tag}} | tag_to_version
   if [ "$#" -gt 0 ]; then
-    for t in $@ ; do
-      echo "$t"
-    done | grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    for t in $@ ; do echo "$t"; done \
+      | grep --color=never -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' \
+      | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
   else
-    while read t ; do
-      echo "$t"
-    done | grep -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
+    while read t ; do echo "$t"; done \
+      | grep --color=never -E '^[0-9]+(\.[0-9]+){0,2}-alpine$' \
+      | grep --color=never -Eo '^[0-9]+(\.[0-9]+){0,2}'
   fi
 }
 
