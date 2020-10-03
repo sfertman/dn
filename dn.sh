@@ -21,7 +21,7 @@ dn_version() {
 }
 
 echoerr() { echo "$@" 1>&2; }
-ERRNIMPL() { echoerr "ERROR: Not implemented"; }
+ERRNIMPL() { echoerr "ERROR: Not implemented! 🤖"; }
 
 dn_install() {
   echo "Installing DN...";
@@ -54,10 +54,10 @@ dn_install() {
   dn_add $DN_INSTALL_NODE_VERSION
   dn_switch -g $DN_INSTALL_NODE_VERSION
   echo
-  echo "DN has been successfully INSTALLED."
+  echo "DN has been successfully INSTALLED. 🎉"
   dn_info
   echo
-  echo "Run 'dn --help' to get started.";
+  echo "Run 'dn --help' to get started. 📖";
 }
 
 dn_uninstall() {
@@ -65,7 +65,7 @@ dn_uninstall() {
   echo
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "whew!"
+    echo "Whew! 😌"
     return 1;
   fi
 
