@@ -7,12 +7,12 @@ set -e
 
 DN_SCRIPT_VERSION='0.1.0'
 DN_INSTALL_NODE_VERSION=14
-PREFIX=/usr/local
-DN_INSTALL_DIR=${PREFIX}/lib/dn
-DN_BIN_DIR=${PREFIX}/bin
+DN_PREFIX=/usr/local
+DN_INSTALL_DIR=${DN_PREFIX}/lib/dn
+DN_BIN_DIR=${DN_PREFIX}/bin
 DN_REPO_URL='https://github.com/sfertman/dn'
 
-get_dn_version() {
+dn_version() {
   if [ -f "${DN_INSTALL_DIR}/.version" ]; then
     echo "$(< "${DN_INSTALL_DIR}/.version")"
   else
@@ -22,38 +22,6 @@ get_dn_version() {
 
 echoerr() { echo "$@" 1>&2; }
 ERRNIMPL() { echoerr "ERROR: Not implemented"; }
-
-dn_help() {
-  echoerr "
-DN:  Docker Powered Node Version Manager 🐳 + ⬢
-
-Usage:
-
-  dn [OPTIONS] VERSION
-    Switch to specified version x.y.z (install if missing.)
-
-  dn COMMAND ...
-    Manage versions using available commands below.
-
-Options:
-
-  -v, --version  Show installed dn version
-
-Commands:
-  add         Install one or more node version
-  forget      Forget directory local setting
-  info        Display dn system info
-  install     Install dn on your system
-  ls          List installed versions
-  rm          Delete a version
-  search      Search available versions
-  show        Display information about the current Node version
-  switch      Switch to installed version
-  uninstall   Uninstall dn from your system
-  use-global  Use global setting in directory
-
-Run 'dn COMMAND --help' for more information on a command.";
-}
 
 dn_install() {
   echo "Installing DN...";
@@ -183,7 +151,7 @@ Commands:
   yarn  Run yarn [ARG...]";}
 
   validate_command() {
-    if [[ ! $1 =~ ^(node|npm|npx|yarn|yarnpkg|bash|sh)$ ]]; then
+    if [[ ! $1 =~ ^(node|npm|npx|yarn|yarnpkg|sh)$ ]]; then
       echo 'INVALID_COMMAND';
     fi
   }
@@ -191,16 +159,18 @@ Commands:
   if [[ "$#" -le 0 || "$1" = '-h' || "$1" = '--help' ]]; then
     _help;
   else
-    local node_full_version=$(get_active_version);
-    local node_major_version=$(echo "${node_full_version}" | grep --color=never -Eo ^[0-9]+)
+    local node_version=$(get_active_version);
+    local node_major_version=$(echo "${node_version}" | grep --color=never -Eo ^[0-9]+)
     local docker_vol="dnode_modules_${node_major_version}";
     docker volume create "${docker_vol}" > /dev/null;
     local CMD=(docker run -it --rm);
+    ## TODO: figure out how to create a container once and then just keep running stuff in it
+    ##       figure out if it ha any performance advantages
     CMD=(${CMD[*]} -it);
     CMD=(${CMD[*]} -w "/.dnode${PWD}");
     CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
     CMD=(${CMD[*]} -v "${docker_vol}:/usr/local/lib/node_modules");
-    CMD=(${CMD[*]} "node:${node_full_version}-alpine");
+    CMD=(${CMD[*]} "node:${node_version}-alpine");
     if [ -z $(validate_command $1) ]; then
       CMD=(${CMD[*]} $@);
     else
@@ -323,7 +293,7 @@ dn_info() {
 DN:  Docker Powered Node Version Manager 🐳 + ⬢
 
 Script version:     $DN_SCRIPT_VERSION
-Installed version:  $(get_dn_version)
+Installed version:  $(dn_version)
 Node version:       $node_version ($node_version_type)
 Source:             ${DN_REPO_URL}"
 }
@@ -513,56 +483,80 @@ Usage:
   fi
 }
 
-ARGS=("$@")
-REST_ARGS=${ARGS[*]:1}
-## TODO: encapsulate this into a "main" fn
-case "$1" in
-  -h|--help)
-    dn_help
-    ;;
-  -v|--version)
-    echo "$(get_dn_version)"
-    ;;
-  +([0-9])?(\.+([0-9]))?(\.+([0-9])))
-    dn_add_and_switch ${ARGS[*]}
-    ;;
-  add) #+
-    dn_add ${REST_ARGS[*]}
-    ;;
-  forget) #+
-    dn_forget
-    ;;
-  info) #+
-    dn_info
-    ;;
-  install) #+
-    dn_install
-    ;;
-  ls) #+
-    dn_ls ${REST_ARGS[*]}
-    ;;
-  rm) #+
-    dn_rm ${REST_ARGS[*]}
-    ;;
-  run) #+
-    dn_run ${REST_ARGS[*]}
-    ;;
-  search) #+
-    dn_search ${REST_ARGS[*]}
-    ;;
-  show) #+
-    dn_show ${REST_ARGS[*]}
-    ;;
-  switch) #+
-    dn_switch ${REST_ARGS[*]}
-    ;;
-  uninstall) #+
-    dn_uninstall
-    ;;
-  use-global) #+
-    dn_use_global
-    ;;
-  *) #+
-    dn_help
-    ;;
-esac
+_main() {
+  _help() { echoerr "
+DN:  Docker Powered Node Version Manager 🐳 + ⬢
+
+Usage:  dn [OPTIONS] COMMAND
+
+Options:
+  -g, --global    Affect global version when switching
+  -v, --version   Show installed dn version
+
+Commands:
+  x[.y[.z]]    Switch to version x.y.z (install if missing)
+  add          Install one or more node version
+  forget       Forget directory local setting
+  info         Display detailed informatoin about dn
+  inspect      Display detailed information about active node version
+  install      Install dn on your system
+  ls           List installed versions
+  rm           Delete a version
+  search       Search available versions
+  show         Show active Node version
+  switch       Switch to installed version
+  uninstall    Uninstall dn from your system
+  use-global   Use global setting in directory
+
+Run 'dn COMMAND --help' for more information on a command."; }
+
+  if [ $# -le 0 ]; then
+    _help;
+    return 0;
+  else
+    local is_global is_help is_version;
+    while [[ $# -gt 0 && $1 == -* ]]; do
+      case "$1" in
+        -g|--global)    is_global=1 ;;
+        -h|--help)      is_help=1 ;;
+        -v|--version)   is_version=1 ;;
+        *)              echoerr "Unknown option $1"; return 1 ;;
+      esac
+      shift
+    done
+
+    if [ ! -z $is_help ]; then
+      _help;
+    elif [ ! -z $is_version ]; then
+      dn_version;
+    else
+      local args=("$@");
+      local rest_args=${args[*]:1};
+      case "$1" in
+        +([0-9])?(\.+([0-9]))?(\.+([0-9])))
+          if [ ! -z "${is_global}" ]; then
+            dn_add_and_switch -g $1;
+          else
+            dn_add_and_switch $1;
+          fi
+          ;;
+        add)          dn_add ${rest_args[*]} ;;
+        forget)       dn_forget ;;
+        inf|info)     dn_info ;;
+        inspect)      dn_inspect ;;
+        install)      dn_install ;;
+        ls|ll|list)   dn_ls ${rest_args[*]} ;;
+        rm|remove)    dn_rm ${rest_args[*]} ;;
+        run)          dn_run ${rest_args[*]} ;;
+        search)       dn_search ${rest_args[*]} ;;
+        show)         dn_show ${rest_args[*]} ;;
+        switch)       dn_switch ${rest_args[*]} ;;
+        uninstall)    dn_uninstall ;;
+        use-global)   dn_use_global ;;
+        *)            _help ;;
+      esac
+    fi
+  fi
+}
+
+_main $@
