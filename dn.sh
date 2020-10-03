@@ -396,11 +396,15 @@ Display information about currently active node version.";}
       ;;
     *)
       local active_version=$(get_active_version);
-      local full_version=$(docker image inspect node:${active_version}-alpine \
-                            | jq -r '.[].Config.Env[]' \
-                            | grep NODE_VERSION \
-                            | grep -Eo --color=never '[0-9]+(\.[0-9]+){0,2}');
-      echo "$active_version ($full_version)"
+      if [ -z ${active_version} ]; then
+        echo 'N/A';
+      else
+        local full_version=$(docker image inspect node:${active_version}-alpine \
+                              | jq -r '.[].Config.Env[]' \
+                              | grep NODE_VERSION \
+                              | grep -Eo --color=never '[0-9]+(\.[0-9]+){0,2}');
+        echo "$active_version ($full_version)"
+      fi
       ;;
   esac
 }
