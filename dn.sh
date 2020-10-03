@@ -308,18 +308,15 @@ Use the current global Node version setting.";}
 }
 
 dn_info() {
-  local node_version
-  local node_version_type='global'
-
-  local node_version_local=$(get_active_version_local)
-  if [ ! -z "$node_version_local" ]; then
-    node_version=$node_version_local;
-    node_version_type='local'
+  local node_version node_version_type;
+  local flag_file_path=$(get_local_version_flag_path);
+  if [[ ! -f ${flag_file_path} || $(< ${flag_file_path}) = '@global' ]]; then
+    node_version_type='global';
+    node_version=$(get_active_version_global);
+    if [ -z $node_version ]; then node_version='N/A'; fi
   else
-    node_version=$(get_active_version_global)
-    if [ -z "$node_version" ]; then
-      node_version='N/A';
-    fi
+    node_version_type='local';
+    node_version=$(< ${flag_file_path});
   fi
 
   echoerr "
@@ -363,8 +360,7 @@ List installed versions.";}
   esac
 }
 
-get_active_version_local() {
-  # returns the active node version. If no local version found, returns the global configured
+get_local_version_flag_path() {
 
   local this_dir="$1"
 
@@ -373,14 +369,22 @@ get_active_version_local() {
   fi
 
   if [ -f "${this_dir}/.dnode_version" ]; then
-    local active_version_local="$(< ${this_dir}/.dnode_version)";
+    echo "${this_dir}/.dnode_version";
+  elif [ "/" != "${this_dir}" ]; then
+    get_local_version_flag_path "$(dirname "${this_dir}")"
+  fi
+}
+
+get_active_version_local() {
+  # returns the active node version. If no local version found, returns the global configured
+  local flag_file_path=$(get_local_version_flag_path);
+  if [ -f "${flag_file_path}" ]; then
+    local active_version_local="$(< ${flag_file_path})";
     if [ "${active_version_local}" = '@global' ]; then
       get_active_version_global;
     else
       echo "${active_version_local}";
     fi
-  elif [ "/" != "${this_dir}" ]; then
-    get_active_version_local "$(dirname "${this_dir}")"
   fi
 }
 
