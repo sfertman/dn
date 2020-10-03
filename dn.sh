@@ -299,8 +299,19 @@ Source:             ${DN_REPO_URL}"
 }
 
 dn_add_and_switch() {
-  dn_add $@
-  dn_switch $@
+  _help() { echoerr "
+Usage:  dn [-g|--global] VERSION
+
+Switch to version x[.y[.z]] (install if missing).
+Use -g option to switch global version.";}
+
+  if [ $1 = '-g' ]; then
+    dn_add $2
+    dn_switch -g $2
+  else
+    dn_add $1
+    dn_switch $1
+  fi
 }
 
 dn_ls() {
