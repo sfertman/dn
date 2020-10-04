@@ -409,6 +409,20 @@ Display information about currently active node version.";}
   esac
 }
 
+dn_inspect() {
+  local active_version=$(get_active_version);
+  if [ -z ${active_version} ]; then
+    echoerr "Node version undefined! There may be something wrong with your installation."
+    return 1;
+  else
+    docker run --rm node:${active_version}-alpine sh -c "echo \"
+Node version:   \$NODE_VERSION
+Npm version:    \$(npm -v)
+Yarn version:   \$YARN_VERSION
+Container OS:   \$(cat /etc/os-release | grep -- 'PRETTY_NAME=' | grep -o [^=]*$)\"";
+  fi
+}
+
 get_auth_token() {
   # returns a docker hub annonymous auth token to pull from $repo
   # Example: get_auth_token library/node
