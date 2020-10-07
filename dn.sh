@@ -5,7 +5,7 @@ set -e
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_SCRIPT_VERSION='0.1.0'
+DN_SCRIPT_VERSION=0.1.0
 DN_INSTALL_NODE_VERSION=14
 DN_PREFIX=/usr/local
 DN_INSTALL_DIR=${DN_PREFIX}/lib/dn
@@ -13,10 +13,12 @@ DN_BIN_DIR=${DN_PREFIX}/bin
 DN_REPO_URL='https://github.com/sfertman/dn'
 
 dn_version() {
-  if [ -f "${DN_INSTALL_DIR}/.version" ]; then
-    echo "$(< "${DN_INSTALL_DIR}/.version")"
+  local dn_file="${DN_INSTALL_DIR}/dn.sh";
+  if [ -f "${dn_file}" ]; then
+    grep '^DN_SCRIPT_VERSION=' "${dn_file}" \
+      | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+';
   else
-    echo "N/A"
+    echo 'N/A'
   fi
 }
 
@@ -262,12 +264,6 @@ dn_use_global() {
 Usage:  dn use-global
 
 Use the current global Node version setting.";}
-
-  ## TODO: Possibly make global dynamically updatabe?
-  ## meaning, if global changes at some point,
-  ## .dnode_version will always point to that setting
-  ## This requires a change to get_active_version_local
-  ## to consider a pointer to global.
 
   if [ $# -gt 0 ]; then
     _help;
