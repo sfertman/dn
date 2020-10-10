@@ -10,7 +10,7 @@ A version manager for Node.js which uses docker containers for isolation.
 
 ## Getting started
 - [Install Docker](https://docs.docker.com/desktop/#download-and-install)
-- Clone this repo
+- Download [latest release](https://github.com/sfertman/dn/archive/0.1.0.zip)
 - Install the script `./dn.sh install`
 - Run `dn --help` and take it from there
 
