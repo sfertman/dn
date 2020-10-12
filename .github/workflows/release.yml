@@ -30,10 +30,6 @@ jobs:
         with:
           tag_name: v${{ env.DN_VERSION }}
           release_name: v${{ env.DN_VERSION }}
-          body: |
-            Changes in this Release
-            - First Change
-            - Second Change
           draft: true
           prerelease: false
       - name: Upload a Release Asset
