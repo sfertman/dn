@@ -21,16 +21,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: wip001 ##${{ github.ref }}
           release_name: Release_test ## ${{ github.ref }}
           body: |
             Changes in this Release
             - First Change
             - Second Change
           draft: false
-          prerelease: false
+          prerelease: true
       - name: Upload a Release Asset
         uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # The URL for uploading assets to the release
           upload_url: /
