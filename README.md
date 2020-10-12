@@ -1,18 +1,26 @@
-# dn
-**D**ocker powered **N**ode.js version manager
-
-## What?
-A version manager for Node.js which uses docker containers for isolation.
-
-## Why?
-- I want to run and build Node.js apps in complete isolation and I don't want to explicitly invoke docker for every little thing.
-- I wanted to see what it takes to build batteries-included well documented cli application in bash (this still has some way to go but I think I've done pretty well so far.)
+# `dn` - **D**ocker powered **N**ode.js version manager
 
 ## Getting started
-- [Install Docker](https://docs.docker.com/desktop/#download-and-install)
-- Download [latest release](https://github.com/sfertman/dn/archive/0.1.0.zip)
-- Install the script `./dn.sh install`
-- Run `dn --help` and take it from there
+1. [Install Docker](https://docs.docker.com/desktop/#download-and-install)
+1. Download and install [latest release](https://github.com/sfertman/dn/releases/latest):
+    ```
+    wget https://github.com/sfertman/dn/releases/latest/download/dn.sh
+    chmod +x dn.sh
+    ./dn.sh install
+    ```
+1. Start using the version of node you want, e.g.:
+    ```
+    dn 6.14
+    ```
+1. Learn more:
+    ```
+    dn --help
+    ```
+
+## Why does it exist?
+- I need to make sure my apps work with multiple versions of Node.js
+- I need to reproducibly build, test and run Node.js apps. Docker is a great solution for deployment but I don't want to deal with dockerfiles and docker-compose in my day to day.
+- I wanted to see what it takes to a build "batteries included", well documented cli application in bash (this still has some way to go but I think I've done pretty well so far.)
 
 ## Inspiration
 - [tj/n](https://github.com/tj/n)
