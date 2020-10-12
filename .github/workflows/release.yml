@@ -21,7 +21,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: wip001 ##${{ github.ref }}
+          tag_name: wip002 ##${{ github.ref }}
           release_name: Release_test ## ${{ github.ref }}
           body: |
             Changes in this Release
@@ -35,9 +35,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # The URL for uploading assets to the release
-          upload_url: /
-          # The path to the asset you want to upload
-          asset_path: dn.sh
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dn.sh
           # The name of the asset you want to upload
           asset_name: dn.sh
           # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
