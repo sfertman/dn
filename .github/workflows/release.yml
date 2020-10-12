@@ -1,10 +1,9 @@
 on:
   push:
-    # Sequence of patterns matched against refs/tags
     tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-    branches:
-      - af-actions
+      - 'v*'
+    # branches:
+    #   - master
 
 name: Create Release
 
@@ -37,10 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # The URL for uploading assets to the release
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dn.sh
-          # The name of the asset you want to upload
           asset_name: dn.sh
-          # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
           asset_content_type: text/plain
