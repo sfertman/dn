@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 shopt -s extglob
 set -e
-
+## do something new
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
