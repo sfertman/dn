@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 shopt -s extglob
 set -e
-## do something new
+
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_SCRIPT_VERSION=0.1.2
+DN_SCRIPT_VERSION=0.1.0
 DN_INSTALL_NODE_VERSION=14
 DN_PREFIX=/usr/local
 DN_INSTALL_DIR=${DN_PREFIX}/lib/dn
