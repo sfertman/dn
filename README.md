@@ -5,8 +5,8 @@
 1. Download and install [latest release](https://github.com/sfertman/dn/releases/latest):
 
     ```
-    wget https://github.com/sfertman/dn/releases/latest/download/dn.sh
-    chmod +x dn.sh
+    wget https://github.com/sfertman/dn/releases/latest/download/dn.sh  
+    chmod +x dn.sh  
     ./dn.sh install
     ```
     
