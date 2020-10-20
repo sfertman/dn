@@ -5,7 +5,7 @@ set -e
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_VERSION=0.3.0
+DN_VERSION=0.3.1
 DN_REPO_URL='https://github.com/sfertman/dn'
 
 DN_PREFIX=/usr/local
@@ -60,7 +60,7 @@ dn_on_q() {
 
 dn_on() {
   dn_on_q;
-  PATH=${PATH}; # forces rehash
+  PATH="${PATH}"; # forces rehash
   echo "DN is enabled.";
 }
 
@@ -265,10 +265,12 @@ Uninstall one or more node versions from your system.";}
   fi
 }
 
-validate_enabled() {
-  if [ $DN_DISABLED = 'true' ]; then
-    echo 'DN_DISABLED';
-  fi
+realpath1() {
+  local this_dir="${PWD}";
+  cd "$(dirname "${1}")";
+  local fullpath="${PWD}/$(basename "${1}")";
+  cd "${this_dir}";
+  echo "${fullpath}";
 }
 
 dn_run() {
@@ -281,7 +283,7 @@ Commands:
   npx   Run npx [ARG...]
   yarn  Run yarn [ARG...]";}
 
-  validate_command() {
+  validate_command() { # still not sure if I should validate command
     if [[ ! $1 =~ ^(node|npm|npx|yarn|yarnpkg|sh)$ ]]; then
       echo 'INVALID_COMMAND';
     fi
@@ -293,20 +295,37 @@ Commands:
     if [ ! -z $(validate_command $1) ]; then
       echoerr "Unknown command $1";
       return 1;
-    elif [ ! -z $(validate_enabled) ]; then
-      $@
     else
       local node_version=$(get_active_version);
       local node_major_version=$(echo "${node_version}" | grep --color=never -Eo ^[0-9]+)
       local docker_vol="dnode_modules_${node_major_version}";
       docker volume create "${docker_vol}" > /dev/null;
-      local CMD=(docker run -it --rm);
+      local CMD=(docker run);
       ## TODO: figure out how to create a container once and then just keep running stuff in it
       ##       figure out if it ha any performance advantages
+      CMD=(${CMD[*]} --rm);
       CMD=(${CMD[*]} -it);
+      ## ^ should not open tty by default for everything
+      ## should detect and add flag only when needed
       CMD=(${CMD[*]} --network host);
       CMD=(${CMD[*]} -w "/.dnode${PWD}");
-      CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
+      if [ 'node' = "$1" ]; then
+        local js_file;
+        for arg in $@; do
+          if [ -f "$arg" ]; then
+            js_file="$arg";
+            break;
+          fi
+        done
+        if [ ! -z "$js_file" ]; then
+          local mount_dir="$(dirname "$(realpath1 "${js_file}")")"
+          CMD=(${CMD[*]} -v "${mount_dir}:/.dnode${mount_dir}");
+        else
+          CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
+        fi
+      else
+        CMD=(${CMD[*]} -v "${PWD}:/.dnode${PWD}");
+      fi
       CMD=(${CMD[*]} -v "${docker_vol}:/usr/local/lib/node_modules");
       CMD=(${CMD[*]} "node:${node_version}-alpine");
       CMD=(${CMD[*]} $@);
@@ -421,7 +440,7 @@ dn_info() {
 DN:  Docker Powered Node Version Manager 🐳 + ⬢
 
 DN version:         $DN_VERSION
-Status:             $([ -z $(validate_enabled) ] && echo ENABLED || echo DISABLED)
+Status:             $( test $DN_DISABLED = 'true' && echo DISABLED || echo ENABLED )
 Node version:       $node_version ($node_version_type)
 Source:             ${DN_REPO_URL}"
 }
@@ -433,6 +452,7 @@ Usage:  dn [-g|--global] VERSION
 Switch to version x[.y[.z]] (install if missing).
 Use -g option to switch global version.";}
 
+  ## TODO: add help switch -h !
   if [ $1 = '-g' ]; then
     dn_add $2
     dn_switch -g $2
@@ -588,18 +608,6 @@ tag_to_version() {
   fi
 }
 
-version_to_tag() {
-  if [ "$#" -gt 0 ]; then
-    for v; do
-      echo "node:$v-alpine"
-    done
-  else
-    while read v ; do
-      echo "node:$v-alpine"
-    done
-  fi
-}
-
 get_node_versions() {
   # Retrieves all available alpine versions from docker-hub
   get_tags library/node | tag_to_version | sort --version-sort
@@ -673,16 +681,20 @@ Run 'dn COMMAND --help' for more information on a command."; }
     _help;
     return 0;
   else
-    local is_global is_help is_version;
+    local is_global is_force_pull is_help is_version;
     while [[ $# -gt 0 && $1 == -* ]]; do
       case "$1" in
         -g|--global)    is_global=1 ;;
+        -p|--pull)      is_force_pull ;;
         -h|--help)      is_help=1 ;;
         -v|--version)   is_version=1 ;;
         *)              echoerr "Unknown option $1"; return 1 ;;
       esac
       shift
     done
+
+    ## TODO: add -p|--pull) case which will determine whether dn [OPTIONS] VERSION will pull
+    ## and image even if exists should not pull by default
 
     if [ ! -z $is_help ]; then
       _help;
@@ -693,6 +705,8 @@ Run 'dn COMMAND --help' for more information on a command."; }
       local rest_args=${args[*]:1};
       case "$1" in
         +([0-9])?(\.+([0-9]))?(\.+([0-9])))
+          # this is where is_force_pull should be handled
+          # or mebbe inside dn_add_and_switch??
           if [ ! -z "${is_global}" ]; then
             dn_add_and_switch -g $1;
           else
