@@ -1,32 +1,47 @@
+name: Create Release
+
 on:
   push:
-    tags:
-      - 'v*'
-    # branches:
-    #   - master
-
-name: Create Release
+    branches:
+      - master
 
 jobs:
   build:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
+
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
+
       - name: Get DN Version
         run: echo "DN_VERSION=$(. dn.sh -v)" >> $GITHUB_ENV
+
+      - name: Get IS_PRERELEASE
+        run: echo "IS_PRERELEASE=$(echo ${{ env.DN_VERSION }} | grep -q '\-SNAPSHOT$' && echo true || echo false)" >> $GITHUB_ENV
+
+      - name: Delete snapshot release (if exists)
+        run: echo ${{env.DN_VERSION}} | grep -q '\-SNAPSHOT$' && gh release delete ${{ env.DN_VERSION }} -y
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete snapshot tag (if exists)
+        run: echo ${{ env.DN_VERSION }} | grep -q '\-SNAPSHOT$' && git push --delete origin ${{ env.DN_VERSION }}
+        continue-on-error: true
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ env.DN_VERSION }}
-          release_name: v${{ env.DN_VERSION }}
+          tag_name: ${{ env.DN_VERSION }}
+          release_name: ${{ env.DN_VERSION }}
           draft: false
-          prerelease: false
+          prerelease: ${{env.IS_PRERELEASE}}
+
       - name: Upload a Release Asset
         uses: actions/upload-release-asset@v1.0.2
         env:
