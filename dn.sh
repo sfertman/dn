@@ -5,7 +5,7 @@ set -e
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_VERSION=0.4.0
+DN_VERSION='0.4.1-SNAPSHOT'
 DN_REPO_URL='https://github.com/sfertman/dn'
 
 DN_PREFIX=/usr/local
