@@ -5,7 +5,7 @@ set -e
 ## useful resource: https://hackernoon.com/inspecting-docker-images-without-pulling-them-4de53d34a604
 # "inspecting docker image without pulling"
 
-DN_VERSION=0.3.1
+DN_VERSION=0.4.0
 DN_REPO_URL='https://github.com/sfertman/dn'
 
 DN_PREFIX=/usr/local
@@ -133,7 +133,7 @@ dn_install() {
   ln -sf ${DN_INSTALL_DIR}/dn.sh ${DN_BIN_DIR}/dn;
   # add and switch to default version
 
-  dn_add_and_switch -g $DN_DEFAULT_NODE_VERSION
+  dn_add_and_switch 1 0 $DN_DEFAULT_NODE_VERSION
 
   write_exe_file node;
   write_exe_file npm;
@@ -346,22 +346,19 @@ Switch to specified installed VERSION. Will fail if VERSION is not installed.
 
 Options:
 
-  -g, --global  Affect global version when switching";}
+  -g, --global  Affect global version when switching
+  -q, --quiet   Do not show after switch";}
 
   if [ $# -le 0 ] ; then
     _help;
   else
-    local is_global;
-    local is_help;
+    local is_global is_help is_quiet;
 
     while [[ $# -gt 0 && $1 == -* ]]; do
       case "$1" in
-        -g|--global)
-          is_global=1
-          ;;
-        -h|--help)
-          is_help=1
-          ;;
+        -g|--global)   is_global=1 ;;
+        -h|--help)     is_help=1 ;;
+        -q|--quiet)    is_quiet=1 ;;
         *)
           echoerr "Unknown option $1";
           return 1
@@ -392,7 +389,9 @@ Options:
       printf "${node_version}" > .dnode_version;
     fi
 
-    dn_show;
+    if [ -z $is_quiet ]; then
+      dn_show;
+    fi
 
   fi
 }
@@ -447,18 +446,22 @@ Source:             ${DN_REPO_URL}"
 
 dn_add_and_switch() {
   _help() { echoerr "
-Usage:  dn [-g|--global] VERSION
+Usage:  dn_add_and_switch IS_GLOBAL IS_PULL VERSION
 
-Switch to version x[.y[.z]] (install if missing).
-Use -g option to switch global version.";}
+IS_GLOBAL   Determines whether to change global version (1) or not (0)
+IS_PULL     Determines whether to force pull docker image (1) or not (0)
+VERSION     Node version to add/switch";}
 
-  ## TODO: add help switch -h !
-  if [ $1 = '-g' ]; then
-    dn_add $2
-    dn_switch -g $2
+  local is_global=$1 is_pull=$2 version=$3;
+
+  if [ "${is_pull}" = '1' ] || [ ! -z $(validate_img_tag "node:${version}-alpine") ] ; then
+    dn_add "${version}";
+  fi
+
+  if [ "${is_global}" = '1' ]; then
+    dn_switch -g "${version}";
   else
-    dn_add $1
-    dn_switch $1
+    dn_switch "${version}";
   fi
 }
 
@@ -656,6 +659,7 @@ Usage:  dn [OPTIONS] COMMAND
 
 Options:
   -g, --global    Affect global version when switching
+  -p, --pull      Forces pull when switching
   -v, --version   Show installed dn version
 
 Commands:
@@ -681,11 +685,11 @@ Run 'dn COMMAND --help' for more information on a command."; }
     _help;
     return 0;
   else
-    local is_global is_force_pull is_help is_version;
-    while [[ $# -gt 0 && $1 == -* ]]; do
+    local is_global is_pull is_help is_version;
+    while [[ $# -gt 0 && "${1}" == -* ]]; do
       case "$1" in
         -g|--global)    is_global=1 ;;
-        -p|--pull)      is_force_pull ;;
+        -p|--pull)      is_pull=1 ;;
         -h|--help)      is_help=1 ;;
         -v|--version)   is_version=1 ;;
         *)              echoerr "Unknown option $1"; return 1 ;;
@@ -693,26 +697,16 @@ Run 'dn COMMAND --help' for more information on a command."; }
       shift
     done
 
-    ## TODO: add -p|--pull) case which will determine whether dn [OPTIONS] VERSION will pull
-    ## and image even if exists should not pull by default
-
-    if [ ! -z $is_help ]; then
+    if [ ! -z "${is_help}" ]; then
       _help;
-    elif [ ! -z $is_version ]; then
-      echo $DN_VERSION;
+    elif [ ! -z "${is_version}" ]; then
+      echo "${DN_VERSION}";
     else
       local args=("$@");
       local rest_args=${args[*]:1};
       case "$1" in
         +([0-9])?(\.+([0-9]))?(\.+([0-9])))
-          # this is where is_force_pull should be handled
-          # or mebbe inside dn_add_and_switch??
-          if [ ! -z "${is_global}" ]; then
-            dn_add_and_switch -g $1;
-          else
-            dn_add_and_switch $1;
-          fi
-          ;;
+          dn_add_and_switch "${is_global}" "${is_pull}" "${1}" ;;
         add)          dn_add ${rest_args[*]} ;;
         forget)       dn_forget ;;
         inf|info)     dn_info ;;
