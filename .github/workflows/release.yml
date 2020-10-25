@@ -18,20 +18,19 @@ jobs:
       - name: Get DN Version
         run: echo "DN_VERSION=$(. dn.sh -v)" >> $GITHUB_ENV
 
-      - name: Get IS_PRERELEASE
-        run: echo "IS_PRERELEASE=$(echo ${{ env.DN_VERSION }} | grep -q '\-SNAPSHOT$' && echo true || echo false)" >> $GITHUB_ENV
-
-      - name: Delete snapshot release (if exists)
-        run: echo ${{env.DN_VERSION}} | grep -q '\-SNAPSHOT$' && gh release delete ${{ env.DN_VERSION }} -y
-        continue-on-error: true
+      - name: Get Existing Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "RELEASE_EXIST=$(gh release list | grep -Eo '^\S+' | grep -q "^${{ env.DN_VERSION }}$")" >> $GITHUB_ENV
 
-      - name: Delete snapshot tag (if exists)
-        run: echo ${{ env.DN_VERSION }} | grep -q '\-SNAPSHOT$' && git push --delete origin ${{ env.DN_VERSION }}
-        continue-on-error: true
+      - name: Delete Snapshot release If Exists
+        if: ${{ env.RELEASE_EXISTS && endsWith( env.DN_VERSION, '-SNAPSHOT' ) }}
+        run: |
+           gh release delete ${{ env.DN_VERSION }} -y
+           git push --delete origin ${{ env.DN_VERSION }}
 
-      - name: Create Release
+      - name: Create Release If Not Exists
+        if: ${{ ! env.RELEASE_EXISTS }}
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -40,7 +39,7 @@ jobs:
           tag_name: ${{ env.DN_VERSION }}
           release_name: ${{ env.DN_VERSION }}
           draft: false
-          prerelease: ${{env.IS_PRERELEASE}}
+          prerelease: ${{ endsWith( env.DN_VERSION, '-SNAPSHOT' ) }}
 
       - name: Upload a Release Asset
         uses: actions/upload-release-asset@v1.0.2
